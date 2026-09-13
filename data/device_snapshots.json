@@ -1,0 +1,37 @@
+{
+  "hosts": [
+    {"name": "PC4",  "ip": "192.168.10.55", "mask": "255.255.255.0", "gateway": "192.168.20.1", "source": "C004"},
+    {"name": "PC5",  "ip": "192.168.30.10", "mask": "255.255.255.0", "gateway": "192.168.30.1", "source": "C005"},
+    {"name": "PC9",  "ip": "192.168.10.50", "mask": "255.255.255.0", "gateway": "192.168.10.1", "source": "C008"},
+    {"name": "PC10", "ip": "192.168.10.50", "mask": "255.255.255.0", "gateway": "192.168.10.1", "source": "C008"},
+    {"name": "PC26", "ip": "192.168.10.60", "mask": "255.255.255.128", "gateway": "192.168.10.1", "source": "C026"}
+  ],
+  "expected_masks": {
+    "192.168.10.0": 24,
+    "192.168.20.0": 24,
+    "192.168.30.0": 24
+  },
+  "interfaces": [
+    {"device": "R1", "name": "Gi0/1.10", "admin_status": "administratively down", "line_status": "down", "source": "C005"},
+    {"device": "DNS-Server", "name": "Gi0/0", "admin_status": "up", "line_status": "down", "source": "C010"},
+    {"device": "R1", "name": "Gi0/0/0.10", "admin_status": "up", "line_status": "up", "source": "C004"}
+  ],
+  "ports": [
+    {"device": "SW1", "name": "Fa0/2", "mode": "access", "access_vlan": 10, "source": "C001"},
+    {"device": "SW1", "name": "Fa0/4", "mode": "access", "access_vlan": 20, "source": "C001"},
+    {"device": "SW3", "name": "Gi0/1", "mode": "access", "access_vlan": 1,  "source": "C024"}
+  ],
+  "expected_vlan_by_port": {
+    "SW1|Fa0/2": 10,
+    "SW1|Fa0/4": 10,
+    "SW3|Gi0/1": 99
+  },
+  "routing_tables": {
+    "R1": ["192.168.10.0/24", "192.168.20.0/24"],
+    "HQ-R1": ["192.168.0.0/22"]
+  },
+  "required_reachability": [
+    {"device": "R1", "needs_subnet": "192.168.30.0/24"},
+    {"device": "HQ-R1", "needs_subnet": "192.168.12.0/24"}
+  ]
+}

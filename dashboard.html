@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NetSage AI Dashboard</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#121b2e; --text:#e8edf7; --muted:#94a3b8;
+    --accent:#4f8cff; --good:#22c55e; --warn:#f59e0b; --bad:#ef4444; --border:#22314d;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f5f7fb; --panel:#ffffff; --text:#0f172a; --muted:#5b6577; --border:#e2e8f0; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:28px 20px 60px}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;max-width:1100px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px}
+  .card h2{font-size:14px;margin:0 0 14px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;max-width:1100px;margin:0 auto 16px}
+  .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+  .kpi .num{font-size:28px;font-weight:700}
+  .kpi .lbl{font-size:12px;color:var(--muted);margin-top:4px}
+  .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px}
+  .bar-label{width:100px;flex-shrink:0;color:var(--muted)}
+  .bar-track{flex:1;background:rgba(128,128,128,.15);border-radius:6px;height:16px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:6px}
+  .bar-val{width:30px;text-align:right;flex-shrink:0}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
+  .pill.accepted{background:rgba(34,197,94,.15);color:var(--good)}
+  .pill.edited{background:rgba(245,158,11,.15);color:var(--warn)}
+  .pill.rejected{background:rgba(239,68,68,.15);color:var(--bad)}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px}
+</style>
+</head>
+<body>
+  <h1>NetSage AI — Diagnosis Dashboard</h1>
+  <div class="sub">Applied AI + Network Troubleshooting · Cisco Packet Tracer labs</div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Cases by fault category</h2>
+      <div id="byCategory"></div>
+    </div>
+    <div class="card">
+      <h2>Cases by severity</h2>
+      <div id="bySeverity"></div>
+    </div>
+    <div class="card">
+      <h2>Cases by OSI layer</h2>
+      <div id="byOsi"></div>
+    </div>
+    <div class="card">
+      <h2>AI vs human review outcome</h2>
+      <div id="byDecision"></div>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:1100px;margin:16px auto 0">
+    <h2>Responsible AI — corrected cases (sample)</h2>
+    <table>
+      <thead><tr><th>Case</th><th>AI said</th><th>Actual root cause</th><th>Outcome</th></tr></thead>
+      <tbody id="raiTable"></tbody>
+    </table>
+  </div>
+
+  <footer>Data source: dashboard/summary.json + review/human_review_log.csv — regenerate via scripts/build_dashboard_data.py</footer>
+
+<script>
+// Data is embedded at build time — see scripts/build_dashboard_data.py for the source of truth.
+const SUMMARY = {"total_cases": 32, "by_category": {"Routing": 6, "VLAN": 5, "DHCP": 4, "ACL": 4, "NAT": 4, "Gateway": 3, "DNS": 3, "Wireless": 3}, "by_severity": {"Medium": 14, "High": 14, "Low": 4}, "by_osi_layer": {"Layer 3": 16, "Layer 2": 7, "Layer 1/2": 2, "Layer 7": 2, "Layer 4": 2, "Layer 3/4": 1, "Layer 1": 1, "Layer 4/7": 1}, "by_reviewer_decision": {"Accepted": 25, "Edited": 5, "Rejected": 2}, "ai_human_agreement_rate_pct": 78.1};
+const RAI_SAMPLE = [{"case_id": "C004", "category": "Gateway", "ai_root_cause": "PC4 has an incorrect default gateway configured (192.168.20.1) that does not match its VLAN 10 subnet (192.168.10.0/24).", "ai_confidence": "medium", "expected_fault": "DHCP pool default-router is set to the wrong subnet's gateway (192.168.20.1 instead of 192.168.10.1).", "reviewer_decision": "Edited", "corrected_root_cause": "DHCP pool's 'default-router' statement for VLAN 10 points to the wrong subnet's gateway (192.168.20.1 instead of 192.168.10.1).", "reviewer_notes": "AI correctly spotted the gateway/subnet mismatch from the PC's ipconfig output, but it wasn't given the DHCP pool config and defaulted to 'fix it on the PC.' Since this PC gets its address via DHCP, the real fix is on the DHCP pool's default-router line, not a manual static change on the client. Corrected the root cause to point at the server-side config; kept AI's evidence read as accurate.", "reviewer": "Abhey"}, {"case_id": "C009", "category": "DNS", "ai_root_cause": "DNS server (192.168.99.99) does not have an A record for 'server.netsage.local'.", "ai_confidence": "medium", "expected_fault": "PC's DNS server address (192.168.99.99) does not match the actual DNS server (192.168.50.5); wrong DNS server configured via DHCP option.", "reviewer_decision": "Rejected", "corrected_root_cause": "PC's configured DNS server address (192.168.99.99) does not match the network's real DNS server (192.168.50.5) -- the PC is asking the wrong device, which is why lookups fail while ping-by-IP still works.", "reviewer_notes": "AI incorrectly assumed the DNS server it saw referenced (192.168.99.99) was correct and hypothesized a missing record on it. That address is not the documented DNS server for this network at all -- the AI never questioned whether the PC was even pointed at the right server. Its proposed fix (add a record on 192.168.99.99) would not resolve the problem and risks configuring the wrong box. Rejected rather than edited because the fix direction was wrong, not just incomplete.", "reviewer": "Abhey"}, {"case_id": "C012", "category": "Routing", "ai_root_cause": "OSPF adjacency is stuck in EXSTART/DR state due to potential timer mismatches or DBD packet exchange issues", "ai_confidence": "medium", "expected_fault": "OSPF neighbor stuck in EXSTART \u2014 usually an MTU mismatch between R1 and R2's serial interfaces preventing DBD exchange.", "reviewer_decision": "Edited", "corrected_root_cause": "OSPF neighbor stuck in EXSTART/DR is the classic signature of an MTU mismatch between R1 and R2's serial interfaces blocking the DBD exchange, not a timer or authentication issue.", "reviewer_notes": "AI's evidence read (EXSTART/DR, 00:00:31 dead timer) was accurate, but it offered a generic list of possible causes (timers, network type, authentication) instead of naming the specific, well-known cause for this exact symptom pattern. Its 'next_command' (show ip ospf interface) would have surfaced the MTU values and let a human confirm this, so the diagnosis was salvageable but too vague to accept as-is.", "reviewer": "Abhey"}, {"case_id": "C013", "category": "Routing", "ai_root_cause": "Missing route to ISP's WAN network (203.0.113.0/24) preventing default route validation", "ai_confidence": "medium", "expected_fault": "Next-hop 203.0.113.1 is not directly reachable \u2014 WAN interface IP/subnet mismatch with the ISP router's interface.", "reviewer_decision": "Edited", "corrected_root_cause": "The next-hop 203.0.113.1 is not directly reachable because of an IP addressing mismatch on the WAN interface facing the ISP router, not a missing route.", "reviewer_notes": "AI's own evidence (ping to the next-hop times out) is the right observation, but it then diagnosed a 'missing route to the ISP network' -- a static default route to an unreachable next-hop is an addressing/reachability problem on the WAN link, not something a second route would fix. Corrected the root cause to point at the interface addressing rather than routing table entries.", "reviewer": "Abhey"}, {"case_id": "C017", "category": "ACL", "ai_root_cause": "The ACL 'GUEST_ISOLATION' permits all traffic (any any) instead of restricting access to internal VLANs 10/20/30.", "ai_confidence": "high", "expected_fault": "ACL order error: the 'permit ip any any' statement is listed before the deny rules for internal subnets, so it matches first and the isolation never applies.", "reviewer_decision": "Edited", "corrected_root_cause": "The ACL's deny rules for internal subnets exist but are ordered AFTER the 'permit ip any any' line, so they never match -- this is a rule-ordering bug, not a missing-rule bug.", "reviewer_notes": "AI's root_cause said the deny statements were 'missing/deferred' and its fix was to add new deny rules before the permit -- functionally this happens to fix the symptom, but it mischaracterizes the bug (the rules already exist) and could leave a confusing, partially-duplicated ACL if applied literally. Corrected the wording so the actual fix is 'reorder existing rules', not 'author new ones'.", "reviewer": "Abhey"}, {"case_id": "C025", "category": "Gateway", "ai_root_cause": "HSRP virtual IP mismatch between R1 and R2 for VLAN 20", "ai_confidence": "high", "expected_fault": "HSRP standby router (R2) is stuck in Init state (likely mismatched HSRP group/authentication), so failover/backup path for VLAN 20 is not functioning, and the only forwarding path has an upstream routing gap.", "reviewer_decision": "Edited", "corrected_root_cause": "R2's HSRP standby is stuck in Init state (config-level HSRP problem, e.g. group number or authentication mismatch) rather than a virtual-IP mismatch.", "reviewer_notes": "AI read the two 'show standby brief' outputs and noticed R1 and R2 display different virtual IPs -- which is a legitimate observation and actually exposed an inconsistency in how this case's evidence was written up (two HSRP peers in the same group should always show the same virtual IP). Since the case's intended lesson is 'a peer stuck in Init blocks failover,' the corrected answer keeps that framing but this case's evidence data itself needs to be fixed before reuse -- flagging that separately, not blaming the model.", "reviewer": "Abhey"}, {"case_id": "C031", "category": "Routing", "ai_root_cause": "The summarized route 192.168.0.0/22 does not include the subnet containing 192.168.12.1.", "ai_confidence": "high", "expected_fault": "192.168.12.0/24 is inside the summarized range (192.168.8.0/21 = .8.0-.15.255) but is not actually configured/connected behind R2 (black-holed by the summary \u2014 route exists but no real path to that specific subnet).", "reviewer_decision": "Rejected", "corrected_root_cause": "192.168.12.0/24 is not covered by the 192.168.0.0/22 summary at all (that summary only spans 192.168.0.0-192.168.3.255) -- the case's own topology note is inconsistent (it claims the /22 summary covers VLANs 10-13, which it mathematically cannot), so this case needs to be rewritten with a summary range that actually contains the affected subnet before it's usable for grading or the demo.", "reviewer_notes": "AI attempted the subnetting math, got the boundary arithmetic wrong (claimed 192.168.12.1 'falls in 192.168.8.0/21'), but in the process correctly noticed the summary doesn't actually contain the address in question. Rejected because both the AI's math and the case's own premise are wrong -- this is flagged as a case-data bug to fix in cases.csv, not just an AI error, and shouldn't be used to score model accuracy until corrected.", "reviewer": "Abhey"}];
+
+const COLORS = ["#4f8cff","#22c55e","#f59e0b","#ef4444","#a855f7","#06b6d4","#eab308","#f97316"];
+
+function renderBars(containerId, dataObj, colorOverride){
+  const el = document.getElementById(containerId);
+  const max = Math.max(...Object.values(dataObj));
+  let i = 0;
+  for(const [label, val] of Object.entries(dataObj)){
+    const color = colorOverride ? colorOverride(label) : COLORS[i % COLORS.length];
+    const pct = max ? (val/max*100) : 0;
+    el.innerHTML += `<div class="bar-row">
+      <div class="bar-label">${label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="bar-val">${val}</div>
+    </div>`;
+    i++;
+  }
+}
+
+function decisionColor(label){
+  if(label === "Accepted") return "#22c55e";
+  if(label === "Edited") return "#f59e0b";
+  return "#ef4444";
+}
+
+renderBars("byCategory", SUMMARY.by_category);
+renderBars("bySeverity", SUMMARY.by_severity);
+renderBars("byOsi", SUMMARY.by_osi_layer);
+renderBars("byDecision", SUMMARY.by_reviewer_decision, decisionColor);
+
+const kpis = document.getElementById("kpis");
+const total = SUMMARY.total_cases;
+const agreement = SUMMARY.ai_human_agreement_rate_pct;
+const decisions = SUMMARY.by_reviewer_decision;
+kpis.innerHTML = `
+  <div class="kpi"><div class="num">${total}</div><div class="lbl">Total cases</div></div>
+  <div class="kpi"><div class="num">${agreement}%</div><div class="lbl">AI/human agreement</div></div>
+  <div class="kpi"><div class="num">${decisions.Edited||0}</div><div class="lbl">Edited by reviewer</div></div>
+  <div class="kpi"><div class="num">${decisions.Rejected||0}</div><div class="lbl">Rejected by reviewer</div></div>
+`;
+
+const raiBody = document.getElementById("raiTable");
+RAI_SAMPLE.forEach(r => {
+  const cls = r.reviewer_decision.toLowerCase();
+  raiBody.innerHTML += `<tr>
+    <td>${r.case_id}</td>
+    <td>${r.ai_root_cause}</td>
+    <td>${r.corrected_root_cause}</td>
+    <td><span class="pill ${cls}">${r.reviewer_decision}</span></td>
+  </tr>`;
+});
+</script>
+</body>
+</html>

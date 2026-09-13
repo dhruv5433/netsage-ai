@@ -1,0 +1,47 @@
+[
+  {
+    "check": "duplicate_ip",
+    "severity": "High",
+    "detail": "IP 192.168.10.50 is used by more than one host: PC9, PC10"
+  },
+  {
+    "check": "wrong_mask",
+    "severity": "High",
+    "detail": "PC26 (192.168.10.60) has prefix /25 but the documented subnet 192.168.10.0 should be /24."
+  },
+  {
+    "check": "gateway_mismatch",
+    "severity": "High",
+    "detail": "PC4: gateway 192.168.20.1 is not inside its own subnet 192.168.10.0/24 (ip 192.168.10.55/255.255.255.0)."
+  },
+  {
+    "check": "interface_admin_down",
+    "severity": "High",
+    "detail": "R1 Gi0/1.10 is administratively down (shutdown)."
+  },
+  {
+    "check": "interface_line_down",
+    "severity": "High",
+    "detail": "DNS-Server Gi0/0 is up/administratively but line protocol is down \u2014 check cabling, duplex, or far-end config."
+  },
+  {
+    "check": "missing_or_wrong_vlan",
+    "severity": "Medium",
+    "detail": "SW1 Fa0/4 is access VLAN 20 but should be VLAN 10."
+  },
+  {
+    "check": "missing_or_wrong_vlan",
+    "severity": "Medium",
+    "detail": "SW3 Gi0/1 is access VLAN 1 but should be VLAN 99."
+  },
+  {
+    "check": "missing_route",
+    "severity": "High",
+    "detail": "R1 has no route covering 192.168.30.0/24 \u2014 required for reachability."
+  },
+  {
+    "check": "missing_route",
+    "severity": "High",
+    "detail": "HQ-R1 has no route covering 192.168.12.0/24 \u2014 required for reachability."
+  }
+]

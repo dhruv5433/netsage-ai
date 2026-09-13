@@ -1,0 +1,441 @@
+[
+  {
+    "case_id": "C001",
+    "root_cause": "Fa0/4 is assigned to VLAN 20 (Guest) instead of VLAN 10 (Sales).",
+    "osi_layer": "Layer 2",
+    "confidence": "high",
+    "evidence": "show vlan brief lists Fa0/2 under VLAN 10 but Fa0/4 under VLAN 20.",
+    "next_command": "show running-config interface fa0/4",
+    "fix_steps": [
+      "Enter interface config for Fa0/4.",
+      "Run 'switchport access vlan 10'.",
+      "Verify with 'show vlan brief'.",
+      "Re-test connectivity."
+    ]
+  },
+  {
+    "case_id": "C002",
+    "root_cause": "Trunk link between SW1 and SW2 does not allow VLAN 10 traffic",
+    "osi_layer": "Layer 2",
+    "confidence": "high",
+    "evidence": "show interfaces trunk shows Gi0/1 allows VLANs 1-9,11-4094 but missing VLAN 10",
+    "next_command": "show interfaces trunk | include allowed",
+    "fix_steps": [
+      "Add VLAN 10 to allowed VLANs on SW1's trunk port",
+      "Add VLAN 10 to allowed VLANs on SW2's trunk port",
+      "Verify with 'show interfaces trunk | include allowed'",
+      "Test connectivity between PC1 and PC2"
+    ]
+  },
+  {
+    "case_id": "C003",
+    "root_cause": "Access port Fa0/8 lacks the 'switchport access vlan 30' command to assign it to VLAN 30 (Engineering).",
+    "osi_layer": "Layer 2",
+    "confidence": "high",
+    "evidence": "The interface configuration for Fa0/8 shows 'switchport mode access' but no 'switchport access vlan' command is present.",
+    "next_command": "configure terminal\ninterface FastEthernet0/8\nswitchport access vlan 30",
+    "fix_steps": [
+      "Enter global configuration mode.",
+      "Assign VLAN 30 to Fa0/8 with 'switchport access vlan 30'.",
+      "Verify with 'show vlan brief' or 'show interfaces Fa0/8 switchport'.",
+      "Re-test DHCP and connectivity."
+    ]
+  },
+  {
+    "case_id": "C004",
+    "root_cause": "PC4 has an incorrect default gateway configured (192.168.20.1) that does not match its VLAN 10 subnet (192.168.10.0/24).",
+    "osi_layer": "Layer 3",
+    "confidence": "medium",
+    "evidence": "PC4's IP config shows gateway 192.168.20.1, but VLAN 10's SVI on R1 should provide a gateway in 192.168.10.0/24 subnet.",
+    "next_command": "show running-config interface Gi0/0/0.10",
+    "fix_steps": [
+      "Verify R1's SVI Gi0/0/0.10 has correct IP address matching VLAN 10 subnet.",
+      "Check DHCP server configuration to ensure proper gateway assignment for VLAN 10.",
+      "Manually update PC4's default gateway to match the correct SVI IP address.",
+      "Test connectivity to router and external networks."
+    ]
+  },
+  {
+    "case_id": "C005",
+    "root_cause": "Sub-interface Gi0/1.10 is administratively disabled, preventing traffic to the gateway.",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show ip interface brief shows GigabitEthernet0/1.10 is 'administratively down' and 'down'.",
+    "next_command": "show running-config interface Gi0/1.10",
+    "fix_steps": [
+      "Enable the sub-interface using 'no shutdown' command.",
+      "Verify with 'show ip interface brief' to confirm status.",
+      "Test connectivity to the gateway after interface is active."
+    ]
+  },
+  {
+    "case_id": "C006",
+    "root_cause": "Missing ip helper-address configuration on VLAN 40 interface preventing DHCP request forwarding",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show run interface vlan 40 shows no ip helper-address configured for VLAN 40",
+    "next_command": "show running-config | include ip helper-address",
+    "fix_steps": [
+      "Configure ip helper-address <R1_DHCP_SERVER_IP> on VLAN 40 interface",
+      "Verify with show running-config | include ip helper-address",
+      "Test DHCP acquisition from PCs in VLAN 40",
+      "Confirm connectivity using ping and tracert"
+    ]
+  },
+  {
+    "case_id": "C007",
+    "root_cause": "DHCP pool VLAN10_POOL has no available addresses due to full exclusion range",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show ip dhcp pool shows excluded addresses 192.168.10.1-254, leaving no available addresses for lease",
+    "next_command": "show ip dhcp server statistics",
+    "fix_steps": [
+      "Adjust DHCP pool exclusion range to reserve addresses",
+      "Add 'excluded-address 192.168.10.255' to the pool",
+      "Verify with 'show ip dhcp pool'",
+      "Check if addresses are now available for lease"
+    ]
+  },
+  {
+    "case_id": "C008",
+    "root_cause": "DHCP pool in VLAN 10 is assigning IP 192.168.10.50 to PC10, conflicting with PC9's static IP.",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show ip dhcp conflict shows 192.168.10.50 detected as conflict via ping.",
+    "next_command": "show ip dhcp pool",
+    "fix_steps": [
+      "Edit DHCP pool for VLAN 10.",
+      "Add 'excluded-ip 192.168.10.50' to exclude the static IP.",
+      "Verify with 'show ip dhcp pool'.",
+      "Re-check connectivity and conflict logs."
+    ]
+  },
+  {
+    "case_id": "C009",
+    "root_cause": "DNS server (192.168.99.99) does not have an A record for 'server.netsage.local'.",
+    "osi_layer": "Layer 7",
+    "confidence": "medium",
+    "evidence": "PC can reach 192.168.50.10 via IP but not by hostname; DNS server address is 192.168.99.99.",
+    "next_command": "nslookup server.netsage.local",
+    "fix_steps": [
+      "Verify DNS server has A record for 'server.netsage.local'.",
+      "Add DNS record if missing (on DNS server).",
+      "Restart DNS service if changes were made.",
+      "Test resolution with 'nslookup server.netsage.local' again."
+    ]
+  },
+  {
+    "case_id": "C010",
+    "root_cause": "Physical line status is down on GigabitEthernet0/0 of DNS-Server, preventing DNS traffic.",
+    "osi_layer": "Layer 1",
+    "confidence": "high",
+    "evidence": "show ip interface brief shows GigabitEthernet0/0 line status as 'down'.",
+    "next_command": "show interfaces gigabitethernet0/0",
+    "fix_steps": [
+      "Verify physical cable connections on GigabitEthernet0/0.",
+      "Check switch port status on the other end of the connection.",
+      "Replace faulty cable if detected.",
+      "Re-check interface status with 'show ip interface brief'."
+    ]
+  },
+  {
+    "case_id": "C011",
+    "root_cause": "Missing static route for VLAN 30 subnet on R1",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show ip route shows no entry for 192.168.30.0/24 despite router-on-a-stick configuration for VLAN 30",
+    "next_command": "show running-config | section ip route",
+    "fix_steps": [
+      "Add static route on R1: ip route 192.168.30.0 255.255.255.0 <R2_Interface_IP>",
+      "Verify route with show ip route",
+      "Test connectivity to VLAN 30 server"
+    ]
+  },
+  {
+    "case_id": "C012",
+    "root_cause": "OSPF adjacency is stuck in EXSTART/DR state due to potential timer mismatches or DBD packet exchange issues",
+    "osi_layer": "Layer 3",
+    "confidence": "medium",
+    "evidence": "show ip ospf neighbor shows EXSTART/DR state with 00:00:31 dead time, indicating unstable adjacency",
+    "next_command": "show ip ospf interface serial0/0/0",
+    "fix_steps": [
+      "Verify OSPF timers (hello/dead) match on both routers",
+      "Check network type configuration (point-to-point vs point-to-multipoint)",
+      "Ensure authentication parameters match on both ends",
+      "Recheck OSPF neighbor relationships with 'show ip ospf neighbor'"
+    ]
+  },
+  {
+    "case_id": "C013",
+    "root_cause": "Missing route to ISP's WAN network (203.0.113.0/24) preventing default route validation",
+    "osi_layer": "Layer 3",
+    "confidence": "medium",
+    "evidence": "Default route exists (0.0.0.0/0 via 203.0.113.1) but ping to next-hop fails: 'Request timed out.'",
+    "next_command": "show ip route 203.0.113.0 255.255.255.0",
+    "fix_steps": [
+      "Verify connectivity to ISP's WAN network via 'ping 203.0.113.1'",
+      "Check for missing static route to ISP network: 'ip route 203.0.113.0 255.255.255.0 <next-hop>'",
+      "Ensure interface connected to ISP is up and has correct IP addressing",
+      "Validate routing protocols (if used) are properly configured"
+    ]
+  },
+  {
+    "case_id": "C014",
+    "root_cause": "OSPF is not advertising VLAN 40 subnet because the network statement for 192.168.40.0/24 is missing from R1's OSPF configuration.",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show run | section router ospf shows no network statement for 192.168.40.0/24, which is required for OSPF to advertise this subnet.",
+    "next_command": "show ip route ospf | in 192.168.40",
+    "fix_steps": [
+      "Add 'network 192.168.40.0 0.0.0.255 area 0' to R1's OSPF configuration.",
+      "Verify with 'show running-config | section router ospf'.",
+      "Check OSPF adjacency status with 'show ip ospf neighbor'.",
+      "Confirm routes with 'show ip route ospf'"
+    ]
+  },
+  {
+    "case_id": "C015",
+    "root_cause": "Inbound ACL on VLAN 10 sub-interface is explicitly denying traffic to VLAN 30.",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "Access list BLOCK_SALES line 10 denies IP traffic between 192.168.10.0/24 and 192.168.30.0/24, which are the subnets for VLAN 10 and VLAN 30.",
+    "next_command": "show running-config interface vlan 10",
+    "fix_steps": [
+      "Edit the ACL applied to VLAN 10 sub-interface.",
+      "Remove or reorder the deny rule (10) to allow VLAN 10 \u2192 VLAN 30 traffic.",
+      "Add a specific permit rule for 192.168.10.0/24 \u2192 192.168.30.0/24.",
+      "Verify with 'show access-lists' and test connectivity."
+    ]
+  },
+  {
+    "case_id": "C016",
+    "root_cause": "ACL MGMT_ACL permits 192.168.99.50 instead of the actual admin PC IP 192.168.99.5",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show access-lists MGMT_ACL shows '10 permit tcp host 192.168.99.50 any eq 22' but the admin PC is 192.168.99.5",
+    "next_command": "show running-config | section access-class",
+    "fix_steps": [
+      "Edit MGMT_ACL to permit 192.168.99.5 instead of 192.168.99.50",
+      "Verify with 'show access-lists MGMT_ACL'",
+      "Test SSH connectivity again"
+    ]
+  },
+  {
+    "case_id": "C017",
+    "root_cause": "The ACL 'GUEST_ISOLATION' permits all traffic (any any) instead of restricting access to internal VLANs 10/20/30.",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show access-lists shows an explicit 'permit ip any any' rule with missing/deferred deny statements for internal subnets.",
+    "next_command": "show running-config interface vlan50",
+    "fix_steps": [
+      "Edit ACL GUEST_ISOLATION to add deny statements for internal subnets (10.0.0.0/8, 20.0.0.0/8, 30.0.0.0/8) before the permit rule.",
+      "Apply the revised ACL to the VLAN50 interface.",
+      "Verify with 'show access-lists' and test connectivity isolation."
+    ]
+  },
+  {
+    "case_id": "C018",
+    "root_cause": "Missing 'ip nat inside' configuration on internal interfaces preventing NAT translation.",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show ip nat translations is empty, and 'ip nat inside' is missing on internal interfaces (e.g., GigabitEthernet0/1).",
+    "next_command": "show running-config interface gigabitethernet0/1",
+    "fix_steps": [
+      "Apply 'ip nat inside' to internal interfaces (e.g., GigabitEthernet0/1).",
+      "Verify with 'show ip nat translations' after traffic is generated.",
+      "Test connectivity to the ISP/internet cloud."
+    ]
+  },
+  {
+    "case_id": "C019",
+    "root_cause": "NAT ACL (access-list 1) only permits a subset of 16 IP addresses (192.168.10.0/28), excluding other hosts in the VLAN.",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "Standard IP access list 1 permits only 192.168.10.0 0.0.0.15 (16 addresses), which may not cover all hosts in the VLAN.",
+    "next_command": "show ip nat statistics",
+    "fix_steps": [
+      "Modify access-list 1 to permit the full VLAN subnet (e.g., 192.168.10.0 0.0.0.255).",
+      "Verify ACL changes with 'show access-lists 1'.",
+      "Check NAT translations with 'show ip nat translations'.",
+      "Test connectivity for previously unreachable hosts."
+    ]
+  },
+  {
+    "case_id": "C020",
+    "root_cause": "Static NAT rule maps inside local port 8080 to outside global port 80, but the web server is actually listening on TCP 80.",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "ip nat inside source static tcp 192.168.10.100 8080 203.0.113.50 80 configured, but web server real port is 80",
+    "next_command": "show ip nat translations",
+    "fix_steps": [
+      "Edit NAT configuration: ip nat inside source static tcp 192.168.10.100 80 203.0.113.50 80",
+      "Verify with 'show ip nat translations'",
+      "Test connectivity from simulated internet"
+    ]
+  },
+  {
+    "case_id": "C021",
+    "root_cause": "AP1's uplink port Fa0/12 is configured as access VLAN 99 (unused) instead of VLAN 10",
+    "osi_layer": "Layer 2",
+    "confidence": "high",
+    "evidence": "show interfaces fa0/12 switchport shows Access Mode VLAN: 99 (unused)",
+    "next_command": "show running-config interface fa0/12",
+    "fix_steps": [
+      "Set Fa0/12 to access mode VLAN 10",
+      "Verify with 'show interfaces fa0/12 switchport'",
+      "Check VLAN 10 configuration with 'show vlan brief'",
+      "Test connectivity after configuration"
+    ]
+  },
+  {
+    "case_id": "C022",
+    "root_cause": "WPA2-PSK passphrase is blank/mismatched between AP configuration and client devices.",
+    "osi_layer": "Layer 2",
+    "confidence": "high",
+    "evidence": "AP1# show running-config indicates WPA2-PSK security with blank/mismatched passphrase vs client config.",
+    "next_command": "show running-config interface dot11 radio 0",
+    "fix_steps": [
+      "Verify WPA2-PSK passphrase matches client configuration.",
+      "Set correct pre-shared key on AP1's CORP-WIFI WLAN.",
+      "Reassociate client devices after updating credentials."
+    ]
+  },
+  {
+    "case_id": "C023",
+    "root_cause": "AP1 and AP2 are using the same channel (6) causing co-channel interference and poor roaming.",
+    "osi_layer": "Layer 2",
+    "confidence": "high",
+    "evidence": "Both AP1 and AP2 are configured on channel 6 with 100% power, creating overlapping signal interference.",
+    "next_command": "show running-config ap 1 | include channel",
+    "fix_steps": [
+      "Change AP2 to a non-overlapping channel (e.g., channel 11 or 1).",
+      "Verify channel changes with 'show running-config ap 2 | include channel'.",
+      "Test connectivity at the far end of the building.",
+      "Monitor roaming performance using wireless client tools."
+    ]
+  },
+  {
+    "case_id": "C024",
+    "root_cause": "Gi0/1 on SW3 is configured as an access port instead of a trunk port for VLANs 10, 20, 30.",
+    "osi_layer": "Layer 2",
+    "confidence": "high",
+    "evidence": "show interfaces gi0/1 switchport shows Administrative Mode: static access and Operational Mode: static access.",
+    "next_command": "show running-config interface gi0/1",
+    "fix_steps": [
+      "Enter interface configuration mode for Gi0/1.",
+      "Run 'switchport mode trunk' to enable trunking.",
+      "Verify with 'show interfaces gi0/1 switchport'.",
+      "Test connectivity between VLANs."
+    ]
+  },
+  {
+    "case_id": "C025",
+    "root_cause": "HSRP virtual IP mismatch between R1 and R2 for VLAN 20",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "R1 shows virtual IP 192.168.20.1 for VLAN 20, while R2 shows 192.168.20.2 for the same VLAN. HSRP requires identical virtual IPs across routers in the same group.",
+    "next_command": "show running-config interface Gi0/0.20",
+    "fix_steps": [
+      "Ensure both R1 and R2 use the same HSRP virtual IP (e.g., 192.168.20.1) for VLAN 20.",
+      "Verify HSRP priority settings (R1: 100, R2: 90) to maintain R1 as active.",
+      "Check for interface tracking or preempt settings if needed.",
+      "Recheck HSRP status with 'show standby brief' after configuration."
+    ]
+  },
+  {
+    "case_id": "C026",
+    "root_cause": "DHCP pool incorrectly configured with /25 subnet mask (255.255.255.128) instead of required /24 mask (255.255.255.0).",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "DHCP pool VLAN10_POOL has 'network 192.168.10.0 255.255.255.128' which creates a /25 subnet, conflicting with the required /24 mask.",
+    "next_command": "show dhcp pool VLAN10_POOL",
+    "fix_steps": [
+      "Edit the DHCP pool configuration for VLAN10_POOL.",
+      "Change 'network 192.168.10.0 255.255.255.128' to 'network 192.168.10.0 255.255.255.0'.",
+      "Verify with 'show dhcp pool VLAN10_POOL'.",
+      "Reissue IP from DHCP and test connectivity."
+    ]
+  },
+  {
+    "case_id": "C027",
+    "root_cause": "EIGRP autonomous system (AS) number mismatch between R3 (AS 100) and R4 (AS 200)",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "R3 shows 'router eigrp 100' while R4 shows 'router eigrp 200' in running config. EIGRP neighbors are not forming due to AS number mismatch.",
+    "next_command": "show running-config interface serial0/0/0 (or relevant serial interface)",
+    "fix_steps": [
+      "Verify EIGRP AS numbers match on both routers.",
+      "Configure matching AS number on R3 (change to 200) or R4 (change to 100).",
+      "Re-apply EIGRP configuration.",
+      "Verify with 'show ip eigrp neighbors' after convergence."
+    ]
+  },
+  {
+    "case_id": "C028",
+    "root_cause": "FTP data connection fails because port 20 is not explicitly permitted in the ACL, while port 21 (control) is allowed.",
+    "osi_layer": "Layer 4",
+    "confidence": "high",
+    "evidence": "ACL line '10 permit tcp any host 192.168.50.10 eq 21' allows control port 21, but no rule permits FTP data port 20. The '20 deny ip any any' line blocks all other traffic.",
+    "next_command": "show running-config interface vlan 10",
+    "fix_steps": [
+      "Edit the ACL to add 'permit tcp any host 192.168.50.10 eq 20'.",
+      "Verify with 'show access-lists'.",
+      "Test FTP data transfer again."
+    ]
+  },
+  {
+    "case_id": "C029",
+    "root_cause": "Voice VLAN 100 is not configured on Fa0/5, preventing IP phone registration.",
+    "osi_layer": "Layer 2",
+    "confidence": "high",
+    "evidence": "Interface Fa0/5 shows 'switchport access vlan 10' but lacks 'switchport voice vlan 100' command.",
+    "next_command": "configure terminal\ninterface FastEthernet0/5\nswitchport voice vlan 100",
+    "fix_steps": [
+      "Enter global configuration mode.",
+      "Configure 'switchport voice vlan 100' on Fa0/5.",
+      "Verify with 'show running-config interface fa0/5'.",
+      "Check phone IP acquisition and voice connectivity."
+    ]
+  },
+  {
+    "case_id": "C030",
+    "root_cause": "NAT access-list 1 was not saved to startup-config, causing it to be lost after reboot.",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show startup-config | include access-list shows no output, while show running-config | include access-list displays the ACL.",
+    "next_command": "show startup-config | include access-list",
+    "fix_steps": [
+      "Add access-list 1 to startup-config using 'configure terminal' and 'ip access-list standard 1'.",
+      "Save configuration with 'copy running-config startup-config'.",
+      "Verify with 'show startup-config | include access-list'.",
+      "Re-test internet connectivity."
+    ]
+  },
+  {
+    "case_id": "C031",
+    "root_cause": "The summarized route 192.168.0.0/22 does not include the subnet containing 192.168.12.1.",
+    "osi_layer": "Layer 3",
+    "confidence": "high",
+    "evidence": "show ip route shows the summary route 192.168.0.0/22, but ping 192.168.12.1 fails. The /22 summary covers 192.168.0.0-192.168.3.255, while 192.168.12.1 falls in 192.168.8.0/21 (outside the summary).",
+    "next_command": "show ip route 192.168.12.0",
+    "fix_steps": [
+      "Verify VLAN 12's subnet is within 192.168.0.0/22 range.",
+      "Check if the specific subnet for VLAN 12 is explicitly advertised.",
+      "Adjust the summary route or add explicit routes for subnets outside the summary."
+    ]
+  },
+  {
+    "case_id": "C032",
+    "root_cause": "Missing DNS record for 'hr.netsage.local' in the 'netsage.local' zone",
+    "osi_layer": "Layer 7",
+    "confidence": "high",
+    "evidence": "DNS zone 'netsage.local' shows no record for 'hr.netsage.local' while other hosts exist in the zone",
+    "next_command": "show zone netsage.local configuration",
+    "fix_steps": [
+      "Add 'hr.netsage.local' A record to the 'netsage.local' zone",
+      "Verify with 'show zone netsage.local'",
+      "Check DNS client configuration on affected hosts",
+      "Test resolution using 'nslookup hr.netsage.local'"
+    ]
+  }
+]
