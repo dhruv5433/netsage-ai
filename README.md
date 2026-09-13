@@ -2,7 +2,7 @@
 
 Project 2: an AI-assisted troubleshooter for Cisco Packet Tracer lab
 problems, with mandatory human review before any diagnosis is treated
-as a fix. Deadline: **December 7**.
+as a fix.
 
 ## What's in here
 
